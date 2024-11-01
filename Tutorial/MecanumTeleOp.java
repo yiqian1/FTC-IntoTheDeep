@@ -34,8 +34,8 @@ public class MecanumTeleOp extends LinearOpMode {
             // but only if at least one is out of the range [-1, 1]
             double denominator = Math.max(Math.abs(drive) + Math.abs(strafe) + Math.abs(twist), 1);
             double frontLeftPower = (drive + strafe + twist) / denominator; // ++
-            double frontRightPower = (drive - strafe + twist) / denominator; //--
-            double backLeftPower = (drive - strafe - twist) / denominator; //-+
+            double frontRightPower = (drive - strafe - twist) / denominator; //--
+            double backLeftPower = (drive - strafe + twist) / denominator; //-+
             double backRightPower = (drive + strafe - twist) / denominator; // +-
 
             frontLeftMotor.setPower(-frontLeftPower); // Reversed
