@@ -1,6 +1,7 @@
 package org.firstinspires.ftc.teamcode;
 
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
+import java.lang.annotation.Target;
 import org.firstinspires.ftc.robotcore.external.navigation.CurrentUnit;
 import com.qualcomm.robotcore.hardware.Blinker;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
@@ -49,13 +50,15 @@ public class SecondTeleOp extends LinearOpMode {
      final double ARM_ASCENT = 0.17;
      final double ARM_SCORE_SPECIMEN = 0.2;
      final double ARM_SCORE_BASKETS = 0.3;
+     final double ARM_CLEAR_BARRIER = 0.4;
      
      // Slides positions
      final double SLIDES_INITIAL = 0.0;
      final double SLIDES_MEDIUM = 0.0;
-     final double SLIDES_SCORE_SPECIMEN = 11 * SLIDE_COUNTS_PER_INCH;
+     final double SLIDES_SCORE_SPECIMEN = 7.5 * SLIDE_COUNTS_PER_INCH;
      final double SLIDES_HIGH_BASKET = 30 * SLIDE_COUNTS_PER_INCH;
      final double SLIDES_LOW_BASKET = 15 * SLIDE_COUNTS_PER_INCH;
+     final double SLIDES_KP = 0.001; 
 
      @Override
      public void runOpMode() throws InterruptedException {
@@ -93,12 +96,11 @@ public class SecondTeleOp extends LinearOpMode {
     
                  else if (gamepad2.b){
                          /* This is the correct height to ASCEND */
-                         armToPosition(ARM_ASCENT);
+                         armToPosition(ARM_CLEAR_BARRIER);
                  }
     
                  else if (gamepad2.a){
                          /* This is the correct height to COLLECT */
-                         claw.setPosition(CLAW_OPEN);
                          armToPosition(ARM_COLLECT);
                          slideToPosition(SLIDES_INITIAL);
                  }
@@ -107,22 +109,36 @@ public class SecondTeleOp extends LinearOpMode {
                          claw.setPosition(CLAW_OPEN);
                  }
                  else if (gamepad2.right_bumper){
-                         claw.setPosition(CLAW_CLOSE);
+                        claw.setPosition(CLAW_CLOSE);
                  }
                 
-                 else if (gamepad2.dpad_up){
-                         //This sets the arm to hook specimen 
-                         slideToPosition(SLIDES_SCORE_SPECIMEN);
-                         armToPosition(ARM_SCORE_SPECIMEN);
+                else if (gamepad2.dpad_up){
+                        //This sets the arm to hook specimen 
+                        slideToPosition(SLIDES_SCORE_SPECIMEN);
+                        armToPosition(ARM_SCORE_SPECIMEN);
                  }
-    
+                 
+                else if (gamepad2.dpad_left){
+                    slideToPosition(SLIDES_INITIAL);
+                    claw.setPosition(CLAW_OPEN);
+                    //armToPosition(ARM_INITIAL);
+                }
                  else if (gamepad2.dpad_down){
                          //this moves everything to original 
                          armToPosition(ARM_INITIAL);
                          slideToPosition(SLIDES_INITIAL);
                  }
-                
-                           
+                 
+                 else if (gamepad2.dpad_right){
+                    armToPosition(ARM_ASCENT);
+                 }
+                 
+                 else if (gamepad1.left_trigger > 0.3){
+                    frontLeftMotor.setPower(0);
+                    frontRightMotor.setPower(0);
+                    backLeftMotor.setPower(0);
+                    backRightMotor.setPower(0);
+                 }
 //               /* Here we set the target position of our arm to match the variable that was selected
 //                 by the driver.
 //                 We also set the target velocity (speed) the motor runs at, and use setMode to run it.*/
@@ -194,6 +210,15 @@ public class SecondTeleOp extends LinearOpMode {
         double strafe /*Left to Right*/ = gamepad1.left_stick_x * 1.1; // Counteract imperfect strafing
         double twist /*Turning*/ = gamepad1.right_stick_x; // This is the RIGHT stick, indpendent of drive and strafe
 
+        if (Math.abs(drive) < 0.2)
+            drive = 0;
+            
+        if (Math.abs(strafe) < 0.2)
+            strafe = 0;
+            
+        if (Math.abs(twist) < 0.2)
+            twist = 0;
+            
         // Denominator is the largest motor power (absolute value) or 1
         // This ensures all the powers maintain the same ratio,
         // but only if at least one is out of the range [-1, 1]
@@ -209,16 +234,24 @@ public class SecondTeleOp extends LinearOpMode {
         backRightMotor.setPower(backRightPower*speed);
     }
     
-    public void slideToPosition(double slidePosition) {
-        slideMotorLeft.setTargetPosition((int)slidePosition);
-        slideMotorRight.setTargetPosition((int)slidePosition);
+    public void slideToPosition(double targetPosition) {
+        slideMotorLeft.setTargetPosition((int)targetPosition);
+        slideMotorRight.setTargetPosition((int)targetPosition);
         slideMotorLeft.setMode(DcMotor.RunMode.RUN_TO_POSITION);
         slideMotorRight.setMode(DcMotor.RunMode.RUN_TO_POSITION);
         slideMotorRight.setPower(0.8);
         slideMotorLeft.setPower(0.8); // Adjust power as needed
-        while (opModeIsActive() && slideMotorRight.isBusy());
-        slideMotorRight.setPower(0.2);
-        slideMotorLeft.setPower(0.2);
+        while (opModeIsActive() && slideMotorRight.isBusy()){
+            double currentPosition = slideMotorRight.getCurrentPosition();
+            double currentError = targetPosition - currentPosition;
+            double correction = currentError * SLIDES_KP; 
+            if(currentError > 0){
+                slideMotorRight.setPower(correction + 0.2);
+                slideMotorLeft.setPower(correction + 0.2);
+            }
+        }
+        slideMotorRight.setPower(2.0);
+        slideMotorLeft.setPower(2.0);
     }
     
     public void armToPosition(double armPosition) {
@@ -239,3 +272,4 @@ public class SecondTeleOp extends LinearOpMode {
         slideToPosition(slidePosition - gamepad2.left_stick_y * 100);
     }
 }
+
