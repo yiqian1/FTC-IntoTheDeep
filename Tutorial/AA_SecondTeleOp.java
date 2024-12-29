@@ -11,13 +11,14 @@ import com.qualcomm.robotcore.hardware.CRServo;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
 import com.qualcomm.robotcore.hardware.Servo;
+import com.qualcomm.robotcore.hardware.Gamepad;
 
 @TeleOp
-public class SecondTeleOp extends LinearOpMode {
+public class AA_SecondTeleOp extends LinearOpMode {
      /* Declare OpMode members. */
-     public DcMotor  armMotor    = null; //the arm motor
+     public DcMotor  armMotor   = null; //the arm motor
      public CRServo  wrist      = null; //the active intake servo
-     public Servo    intake       = null; //the wrist servo
+     public Servo    intake     = null; //the wrist servo
     
      // Declaring motors and servos
      private static DcMotor frontLeftMotor;
@@ -39,31 +40,35 @@ public class SecondTeleOp extends LinearOpMode {
     static final double SLIDE_COUNTS_PER_INCH = SLIDE_COUNTS_PER_MOTOR_REV/(1.5*3.1415);
      
      public static double speed = 1.5; // Speed
+     public static int count = 0;
      
      // Claw positions
-     final double CLAW_CLOSE = 0.0;
-     final double CLAW_OPEN = 1.0;
+     final double CLAW_CLOSE = 0.4;
+     final double CLAW_OPEN = 0.8;
      
      // Arm positions
      final double ARM_INITIAL = 0.0; 
      final double ARM_COLLECT = 0.55;
      final double ARM_ASCENT = 0.17;
-     final double ARM_SCORE_SPECIMEN = 0.2;
+     final double ARM_SCORE_SPECIMEN = 0.18;
      final double ARM_SCORE_BASKETS = 0.3;
-     final double ARM_CLEAR_BARRIER = 0.4;
+     final double ARM_CLEAR_BARRIER = 0.4732;
      
      // Slides positions
      final double SLIDES_INITIAL = 0.0;
      final double SLIDES_MEDIUM = 0.0;
-     final double SLIDES_SCORE_SPECIMEN = 7.5 * SLIDE_COUNTS_PER_INCH;
+     final double SLIDES_SCORE_SPECIMEN = 7.1 * SLIDE_COUNTS_PER_INCH;
      final double SLIDES_HIGH_BASKET = 30 * SLIDE_COUNTS_PER_INCH;
      final double SLIDES_LOW_BASKET = 15 * SLIDE_COUNTS_PER_INCH;
      final double SLIDES_KP = 0.001; 
-
+    
+     public Gamepad previous;
+     
      @Override
      public void runOpMode() throws InterruptedException {
         double slidePosition = SLIDES_INITIAL;
         double armPosition = ARM_INITIAL;
+        
         initRobot();
         
          waitForStart();
@@ -76,69 +81,36 @@ public class SecondTeleOp extends LinearOpMode {
             chassisControl();
             armControl();
             slideControl();
+            clawControl();
+            dpadControls();
+            letterControls();
             
 //             armPositionFudgeFactor = FUDGE_FACTOR * (gamepad2.right_trigger + (-gamepad2.left_trigger)); 
 //             if (!(gamepad2.right_trigger > 0.1) && !(gamepad2.left_trigger > 0.1)){
 //                 armPositionFudgeFactor = FUDGE_FACTOR * (gamepad1.right_trigger + (-gamepad1.left_trigger));
 //             }
-            
-                 if(gamepad2.y){
-                     /* This is the correct height to score HIGH BASKET */
-                     slideToPosition(SLIDES_HIGH_BASKET);
-                     armToPosition(ARM_SCORE_BASKETS);
-                 }
-
-                 else if (gamepad2.x){
-                         /* This is the correct height to score the sample in the LOW BASKET */
-                         slideToPosition(SLIDES_LOW_BASKET);
-                         armToPosition(ARM_SCORE_BASKETS);
-                 }
-    
-                 else if (gamepad2.b){
-                         /* This is the correct height to ASCEND */
-                         armToPosition(ARM_CLEAR_BARRIER);
-                 }
-    
-                 else if (gamepad2.a){
-                         /* This is the correct height to COLLECT */
-                         armToPosition(ARM_COLLECT);
-                         slideToPosition(SLIDES_INITIAL);
-                 }
                  
-                 if (gamepad2.left_bumper){
-                         claw.setPosition(CLAW_OPEN);
-                 }
-                 else if (gamepad2.right_bumper){
-                        claw.setPosition(CLAW_CLOSE);
-                 }
+                 
                 
-                else if (gamepad2.dpad_up){
-                        //This sets the arm to hook specimen 
-                        slideToPosition(SLIDES_SCORE_SPECIMEN);
-                        armToPosition(ARM_SCORE_SPECIMEN);
-                 }
-                 
-                else if (gamepad2.dpad_left){
-                    slideToPosition(SLIDES_INITIAL);
-                    claw.setPosition(CLAW_OPEN);
-                    //armToPosition(ARM_INITIAL);
-                }
-                 else if (gamepad2.dpad_down){
-                         //this moves everything to original 
-                         armToPosition(ARM_INITIAL);
-                         slideToPosition(SLIDES_INITIAL);
-                 }
-                 
-                 else if (gamepad2.dpad_right){
-                    armToPosition(ARM_ASCENT);
-                 }
-                 
+                
+                /* 
                  else if (gamepad1.left_trigger > 0.3){
-                    frontLeftMotor.setPower(0);
-                    frontRightMotor.setPower(0);
-                    backLeftMotor.setPower(0);
-                    backRightMotor.setPower(0);
-                 }
+                    double power = frontRightMotor.getPower()/2;
+                    frontLeftMotor.setPower(power);
+                    frontRightMotor.setPower(power);
+                    backLeftMotor.setPower(power);
+                    backRightMotor.setPower(power);
+                    
+                    if ((count/2) instanceof Integer){
+                        speed = 1.0;
+                    }
+                    else if ((count/2) instanceof Integer){
+                        speed = 1.5;
+                    }
+                    count += 1;
+                    
+                 }*/
+
 //               /* Here we set the target position of our arm to match the variable that was selected
 //                 by the driver.
 //                 We also set the target velocity (speed) the motor runs at, and use setMode to run it.*/
@@ -162,6 +134,7 @@ public class SecondTeleOp extends LinearOpMode {
        }
     }
     public void initRobot(){
+        
         // Declare our motors
         frontLeftMotor = hardwareMap.dcMotor.get("Left Front Motor");
         backLeftMotor = hardwareMap.dcMotor.get("Left Back Motor");
@@ -171,6 +144,11 @@ public class SecondTeleOp extends LinearOpMode {
         // Reverse the left side motors.
         frontLeftMotor.setDirection(DcMotorSimple.Direction.REVERSE); 
         backLeftMotor.setDirection(DcMotorSimple.Direction.REVERSE);
+        
+        frontLeftMotor.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+        frontRightMotor.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+        backLeftMotor.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+        backRightMotor.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
          
         slideMotorRight = hardwareMap.get(DcMotor.class, "slideMotorRight");
         slideMotorLeft = hardwareMap.get(DcMotor.class, "slideMotorLeft");
@@ -203,7 +181,11 @@ public class SecondTeleOp extends LinearOpMode {
          
         telemetry.addData("Intialize",1);
     }
+    
     public void chassisControl(){
+        double factor = speed;
+        if (gamepad1.left_trigger > 0.3) 
+            factor = 0.9;
         // left stick: up/down to drive, left/right to strafe
         // right stick: left/right to turn
         double drive /*Front and Back*/ = -gamepad1.left_stick_y; // Remember, Y stick value is reversed
@@ -228,10 +210,10 @@ public class SecondTeleOp extends LinearOpMode {
         double backLeftPower = (drive - strafe + twist) / denominator;
         double backRightPower = (drive + strafe - twist) / denominator;
 
-        frontLeftMotor.setPower(frontLeftPower*speed); 
-        backLeftMotor.setPower(backLeftPower*speed); 
-        frontRightMotor.setPower(frontRightPower*speed);
-        backRightMotor.setPower(backRightPower*speed);
+        frontLeftMotor.setPower(frontLeftPower*factor); 
+        backLeftMotor.setPower(backLeftPower*factor); 
+        frontRightMotor.setPower(frontRightPower*factor);
+        backRightMotor.setPower(backRightPower*factor);
     }
     
     public void slideToPosition(double targetPosition) {
@@ -242,6 +224,11 @@ public class SecondTeleOp extends LinearOpMode {
         slideMotorRight.setPower(0.8);
         slideMotorLeft.setPower(0.8); // Adjust power as needed
         while (opModeIsActive() && slideMotorRight.isBusy()){
+            armControl();
+            clawControl();
+            chassisControl();
+            dpadControls();
+            letterControls();
             double currentPosition = slideMotorRight.getCurrentPosition();
             double currentError = targetPosition - currentPosition;
             double correction = currentError * SLIDES_KP; 
@@ -250,8 +237,8 @@ public class SecondTeleOp extends LinearOpMode {
                 slideMotorLeft.setPower(correction + 0.2);
             }
         }
-        slideMotorRight.setPower(2.0);
-        slideMotorLeft.setPower(2.0);
+        slideMotorRight.setPower(0.2);
+        slideMotorLeft.setPower(0.2);
     }
     
     public void armToPosition(double armPosition) {
@@ -260,16 +247,72 @@ public class SecondTeleOp extends LinearOpMode {
     }
     
     public void armControl() {
-        double armPosition = rightArm.getPosition();
+        double armsPosition = rightArm.getPosition();
         if (gamepad2.right_stick_y > 0.2 || gamepad2.right_stick_y < -0.2){
-            rightArm.setPosition(armPosition + gamepad2.right_stick_y * 0.01);
-            leftArm.setPosition(1-(armPosition + gamepad2.right_stick_y * 0.01));
+            rightArm.setPosition(armsPosition + gamepad2.right_stick_y * 0.01);
+            leftArm.setPosition(1-(armsPosition + gamepad2.right_stick_y * 0.01));
+        }
+        else if (gamepad2.dpad_right){
+            armToPosition(ARM_ASCENT);
+        }
+        else if (gamepad2.b){
+            /* This is the correct height to ASCEND */
+            armToPosition(ARM_CLEAR_BARRIER);
         }
     }
     
     public void slideControl() {
         int slidePosition = slideMotorLeft.getCurrentPosition();
         slideToPosition(slidePosition - gamepad2.left_stick_y * 100);
+    }
+    
+    public void clawControl() {
+        if (gamepad2.left_bumper){
+            claw.setPosition(CLAW_OPEN);
+        }
+        else if (gamepad2.right_bumper){
+            claw.setPosition(CLAW_CLOSE);
+        }
+    }
+    
+    public void dpadControls(){
+        if (gamepad2.dpad_up){
+            //This sets the arm to hook specimen 
+            slideToPosition(SLIDES_SCORE_SPECIMEN);
+            armToPosition(0.14);
+        }
+        else if (gamepad2.dpad_left){
+            armToPosition(ARM_SCORE_SPECIMEN);
+            slideToPosition(SLIDES_INITIAL+(1*SLIDE_COUNTS_PER_INCH));
+            claw.setPosition(CLAW_OPEN);
+            armToPosition(ARM_INITIAL);
+            //armToPosition(ARM_INITIAL);
+        }
+        else if (gamepad2.dpad_down){
+            //this moves everything to original 
+            armToPosition(ARM_INITIAL);
+            slideToPosition(SLIDES_INITIAL);
+        }
+    }
+    
+    public void letterControls(){
+        if(gamepad2.y){
+            /* This is the correct height to score HIGH BASKET */
+            slideToPosition(SLIDES_HIGH_BASKET);
+                armToPosition(ARM_SCORE_BASKETS);
+        }
+
+        else if (gamepad2.x){
+            /* This is the correct height to score the sample in the LOW BASKET */
+            slideToPosition(SLIDES_LOW_BASKET);
+            armToPosition(ARM_SCORE_BASKETS);
+        }
+    
+        else if (gamepad2.a){
+            /* This is the correct height to COLLECT */
+            armToPosition(ARM_COLLECT);
+            slideToPosition(SLIDES_INITIAL);
+        }
     }
 }
 
