@@ -18,7 +18,7 @@ import org.firstinspires.ftc.robotcore.external.navigation.YawPitchRollAngles;
 
 @Autonomous
 //@Disabled
-public class SlideAutoSpeci extends LinearOpMode {
+public class AA2_SlideSpeciAuto extends LinearOpMode {
 
          /* Declare OpMode members. */
      public DcMotor  armMotor    = null; //the arm motor
@@ -48,8 +48,8 @@ public class SlideAutoSpeci extends LinearOpMode {
      public static double speed = 1.5; // Speed
      
      // Claw positions
-     final double CLAW_CLOSE = 0.0;
-     final double CLAW_OPEN = 1.0;
+     final double CLAW_CLOSE = 0.4;
+     final double CLAW_OPEN = 0.8;
      
      // Arm positions
      final double ARM_INITIAL = 0.0; 
@@ -61,7 +61,7 @@ public class SlideAutoSpeci extends LinearOpMode {
      // Slides positions
      final double SLIDES_INITIAL = 0.0;
      final double SLIDES_MEDIUM = 0.0;
-     final double SLIDES_SCORE_SPECIMEN = 10 * SLIDE_COUNTS_PER_INCH;
+     final double SLIDES_SCORE_SPECIMEN = 7.5 * SLIDE_COUNTS_PER_INCH;
      final double SLIDES_HIGH_BASKET = 30 * SLIDE_COUNTS_PER_INCH;
      final double SLIDES_LOW_BASKET = 15 * SLIDE_COUNTS_PER_INCH;
      
@@ -70,7 +70,10 @@ public class SlideAutoSpeci extends LinearOpMode {
     public final double     DRIVE_SPEED             = 0.6;     // Max driving speed for better distance accuracy.
     public final double     TURN_SPEED              = 0.7;     // Max turn speed to limit turn rate.
     public final double     HEADING_THRESHOLD       = 1.0;    // How close must the heading get to the target before moving to next step.
-                                                               // Requiring more accuracy (a smaller number) will often make the turn take longer to get into the final position.
+    public final double     SLIDES_KP               = 0.001; 
+    public final double     SLIDES_BASE_POWER       = 0.2;
+    
+    // Requiring more accuracy (a smaller number) will often make the turn take longer to get into the final position.
     // Define the Proportional control coefficient (or GAIN) for "heading control".
     // We define one value when Turning (larger errors), and the other is used when Driving straight (smaller errors).
     // Increase these numbers if the heading does not correct strongly enough (eg: a heavy robot or using tracks)
@@ -138,49 +141,39 @@ public class SlideAutoSpeci extends LinearOpMode {
         imu.resetYaw();
         
         waitForStart();
-        
+
         // Go to submersible
         slideToPosition(SLIDES_SCORE_SPECIMEN);
         armToPosition(ARM_SCORE_SPECIMEN, 500);
         
         // Score speci
-        driveStraight(DRIVE_SPEED, 25, 0.0);
+        driveStraight(DRIVE_SPEED, 27, 0.0);
         
         // claw.setPosition(CLAW_CLOSE);
 
         slideToPosition(0);
-    
+        slideMotorRight.setPower(0);
+        slideMotorLeft.setPower(0);
         claw.setPosition(CLAW_OPEN);
+        //sleep(200);
         
         // Go back
-        driveStraight(DRIVE_SPEED, -23, 0.0);
+        driveStraight(DRIVE_SPEED, -10, 0.0);
+        goSideways(-0.8, 800);
+        //resetRobot();
+        driveStraight(DRIVE_SPEED, 42, 0);
+        turnToHeading(TURN_SPEED, 178);
+        imu.resetYaw();
         
-        turnToHeading(TURN_SPEED, -90);
+        // Push the 1st sample
+        goSideways(0.3, 750);
+        driveStraight(DRIVE_SPEED, 50, 0);
+        sleep(200);
+        driveStraight(0.4, -52, 0);
         
-        driveStraight(DRIVE_SPEED, 16, -90);
-        sleep(1000);
+        goSideways(0.3, 750);
+        driveStraight(0.4, 51, 0);
         
-        driveStraight(DRIVE_SPEED, 5, -90);
-        
-        armToPosition(ARM_COLLECT, 200);
-        
-        claw.setPosition(CLAW_CLOSE);
-        sleep(500);
-        
-        // Go to samples
-        // driveStraight(DRIVE_SPEED, 24, -50.0);
-        // turnToHeading(TURN_SPEED, -130);
-        // driveStraight(DRIVE_SPEED, 20, -180.0);
-        // driveStraight(DRIVE_SPEED, -25, -180.0);
-        /*
-        // Go sideways for 2nd sample
-        goSidewaysRight(0.5);
-        driveStraight(DRIVE_SPEED, 25, -180.0);
-        driveStraight(DRIVE_SPEED, -25, -180.0);
-        
-        // Go for 3rd sample
-        goSidewaysRight(0.5);
-        driveStraight(DRIVE_SPEED, 25, -180.0); */
         resetRobot();
     }
     
@@ -387,15 +380,22 @@ public class SlideAutoSpeci extends LinearOpMode {
         telemetry.addData("Intialize",1);
     }
     
-    public void slideToPosition(double slidePosition) {
-        slideMotorLeft.setTargetPosition((int)slidePosition);
-        slideMotorRight.setTargetPosition((int)slidePosition);
+    public void slideToPosition(double targetPosition) {
+        slideMotorLeft.setTargetPosition((int)targetPosition);
+        slideMotorRight.setTargetPosition((int)targetPosition);
         slideMotorLeft.setMode(DcMotor.RunMode.RUN_TO_POSITION);
         slideMotorRight.setMode(DcMotor.RunMode.RUN_TO_POSITION);
         slideMotorRight.setPower(0.8);
         slideMotorLeft.setPower(0.8); // Adjust power as needed
-        
-        while (opModeIsActive() && slideMotorRight.isBusy()); claw.setPosition(CLAW_CLOSE);
+        while (opModeIsActive() && slideMotorRight.isBusy()){
+            double currentPosition = slideMotorRight.getCurrentPosition();
+            double currentError = targetPosition - currentPosition;
+            double correction = currentError * SLIDES_KP; 
+            if(currentError > 0){
+                slideMotorRight.setPower(correction + SLIDES_BASE_POWER);
+                slideMotorLeft.setPower(correction + SLIDES_BASE_POWER);
+            }
+        }
         slideMotorRight.setPower(0.2);
         slideMotorLeft.setPower(0.2);
     }
@@ -411,15 +411,15 @@ public class SlideAutoSpeci extends LinearOpMode {
         slideToPosition(SLIDES_INITIAL);
     }
     
-    public void goSidewaysRight(double maxDriveSpeed){
-         double speed = Math.abs(maxDriveSpeed);
+    public void goSideways(double maxDriveSpeed, int time){
+         double speed = maxDriveSpeed;
      
          leftBackMotor.setPower(speed);
          leftFrontMotor.setPower(-speed);
          rightBackMotor.setPower(-speed);
          rightFrontMotor.setPower(speed);
 
-         sleep(800);
+         sleep(time);
          leftBackMotor.setPower(0);
          leftFrontMotor.setPower(0);
          rightBackMotor.setPower(0);
