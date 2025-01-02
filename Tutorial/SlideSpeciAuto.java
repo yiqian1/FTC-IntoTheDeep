@@ -1,6 +1,8 @@
 package org.firstinspires.ftc.teamcode;
 
 import com.qualcomm.hardware.rev.RevHubOrientationOnRobot;
+import org.firstinspires.ftc.robotcore.external.navigation.DistanceUnit;
+import org.firstinspires.ftc.robotcore.external.navigation.Pose2D;
 import com.qualcomm.robotcore.hardware.DcMotorSimple;
 import com.qualcomm.robotcore.hardware.Blinker;
 import com.qualcomm.robotcore.hardware.Servo;
@@ -35,6 +37,7 @@ public class SlideAutoSpeci extends LinearOpMode {
      private static Servo leftArm, rightArm;
      private static Servo claw; 
      IMU imu = null;
+     private static GoBildaPinpointDriver odo;
      
      static final double     COUNTS_PER_MOTOR_REV    = 384.5 ;   // eg: GoBILDA 435 RPM Yellow Jacket
      static final double     DRIVE_GEAR_REDUCTION    = 1.0 ;     // No External Gearing.
@@ -48,8 +51,8 @@ public class SlideAutoSpeci extends LinearOpMode {
      public static double speed = 1.5; // Speed
      
      // Claw positions
-     final double CLAW_CLOSE = 0.0;
-     final double CLAW_OPEN = 1.0;
+     final double CLAW_CLOSE = 0.4;
+     final double CLAW_OPEN = 0.8;
      
      // Arm positions
      final double ARM_INITIAL = 0.0; 
@@ -61,7 +64,7 @@ public class SlideAutoSpeci extends LinearOpMode {
      // Slides positions
      final double SLIDES_INITIAL = 0.0;
      final double SLIDES_MEDIUM = 0.0;
-     final double SLIDES_SCORE_SPECIMEN = 10 * SLIDE_COUNTS_PER_INCH;
+     final double SLIDES_SCORE_SPECIMEN = 7.5 * SLIDE_COUNTS_PER_INCH;
      final double SLIDES_HIGH_BASKET = 30 * SLIDE_COUNTS_PER_INCH;
      final double SLIDES_LOW_BASKET = 15 * SLIDE_COUNTS_PER_INCH;
      
@@ -70,13 +73,21 @@ public class SlideAutoSpeci extends LinearOpMode {
     public final double     DRIVE_SPEED             = 0.6;     // Max driving speed for better distance accuracy.
     public final double     TURN_SPEED              = 0.7;     // Max turn speed to limit turn rate.
     public final double     HEADING_THRESHOLD       = 1.0;    // How close must the heading get to the target before moving to next step.
-                                                               // Requiring more accuracy (a smaller number) will often make the turn take longer to get into the final position.
+    public final double     SLIDES_KP               = 0.001; 
+    public final double     SLIDES_BASE_POWER       = 0.2;
+    
+    // Requiring more accuracy (a smaller number) will often make the turn take longer to get into the final position.
     // Define the Proportional control coefficient (or GAIN) for "heading control".
     // We define one value when Turning (larger errors), and the other is used when Driving straight (smaller errors).
     // Increase these numbers if the heading does not correct strongly enough (eg: a heavy robot or using tracks)
     // Decrease these numbers if the heading does not settle on the correct value (eg: very agile robot with omni wheels)
     static final double     P_TURN_GAIN            = 0.02;     // Larger is more responsive, but also less stable.
     static final double     P_DRIVE_GAIN           = 0.03;     // Larger is more responsive, but also less stable.
+    static final double     P_STRAFE_GAIN          = 0.01; // up to change
+    
+    static final double DRIVE_DRIVE = 0.03;
+    static final double DRIVE_STRAFE = 0.01;
+    static final double DRIVE_TURN = 0.002;
 
     // These variable are declared here (as class members) so they can be updated in various methods,
     // but still be displayed by sendTelemetry()
@@ -92,6 +103,7 @@ public class SlideAutoSpeci extends LinearOpMode {
     @Override
     public void runOpMode() {
         initRobot();
+        
         
         claw.setPosition(CLAW_CLOSE);
         
@@ -138,49 +150,42 @@ public class SlideAutoSpeci extends LinearOpMode {
         imu.resetYaw();
         
         waitForStart();
-        
+        //drive(20, 0.3);
+        //turn(-90, 0.5);
+        //strafe(20, 0.5);
+
         // Go to submersible
         slideToPosition(SLIDES_SCORE_SPECIMEN);
         armToPosition(ARM_SCORE_SPECIMEN, 500);
         
         // Score speci
-        driveStraight(DRIVE_SPEED, 25, 0.0);
+        driveStraight(DRIVE_SPEED, 27, 0.0);
         
         // claw.setPosition(CLAW_CLOSE);
 
         slideToPosition(0);
-    
+        slideMotorRight.setPower(0);
+        slideMotorLeft.setPower(0);
         claw.setPosition(CLAW_OPEN);
+        //sleep(200);
         
         // Go back
-        driveStraight(DRIVE_SPEED, -23, 0.0);
+        driveStraight(DRIVE_SPEED, -10, 0.0);
+        goSideways(-0.8, 800);
+        //resetRobot();
+        driveStraight(DRIVE_SPEED, 42, 0);
+        turnToHeading(TURN_SPEED, 178);
+        imu.resetYaw();
         
-        turnToHeading(TURN_SPEED, -90);
+        // Push the 1st sample
+        goSideways(0.3, 750);
+        driveStraight(DRIVE_SPEED, 50, 0);
+        sleep(200);
+        driveStraight(0.4, -52, 0);
         
-        driveStraight(DRIVE_SPEED, 16, -90);
-        sleep(1000);
+        goSideways(0.3, 750);
+        driveStraight(0.4, 51, 0);
         
-        driveStraight(DRIVE_SPEED, 5, -90);
-        
-        armToPosition(ARM_COLLECT, 200);
-        
-        claw.setPosition(CLAW_CLOSE);
-        sleep(500);
-        
-        // Go to samples
-        // driveStraight(DRIVE_SPEED, 24, -50.0);
-        // turnToHeading(TURN_SPEED, -130);
-        // driveStraight(DRIVE_SPEED, 20, -180.0);
-        // driveStraight(DRIVE_SPEED, -25, -180.0);
-        /*
-        // Go sideways for 2nd sample
-        goSidewaysRight(0.5);
-        driveStraight(DRIVE_SPEED, 25, -180.0);
-        driveStraight(DRIVE_SPEED, -25, -180.0);
-        
-        // Go for 3rd sample
-        goSidewaysRight(0.5);
-        driveStraight(DRIVE_SPEED, 25, -180.0); */
         resetRobot();
     }
     
@@ -239,6 +244,80 @@ public class SlideAutoSpeci extends LinearOpMode {
             leftFrontMotor.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
             rightBackMotor.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
             rightFrontMotor.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+        }
+    }
+    
+    public void drive(double distance, double speed) {
+        if (opModeIsActive()) {
+        odo.update();
+        Pose2D pos = odo.getPosition();
+        double driveError = distance - pos.getX(DistanceUnit.INCH);
+        boolean isDone = Math.abs(driveError) < 0.5;
+             
+        while (opModeIsActive() && !isDone) {
+            odo.update();
+            pos = odo.getPosition();
+            driveError = distance - pos.getX(DistanceUnit.INCH);
+            double driveCorrection = driveError * DRIVE_DRIVE;
+                 
+            double strafeError = -pos.getY(DistanceUnit.INCH);
+            double strafeCorrection = strafeError * DRIVE_STRAFE;
+                 
+            double turnError = -pos.getHeading(AngleUnit.DEGREES);
+            double turnCorrection = turnError * DRIVE_TURN;
+                 
+            moveRobot(driveCorrection, -strafeCorrection, -turnCorrection);
+            isDone = Math.abs(driveError) < 0.5;
+        }
+        moveRobot(0, 0, 0);
+        }
+    }
+    
+    public void strafe(double distance, double speed) {
+        if (opModeIsActive()) {
+        odo.update();
+        Pose2D pos = odo.getPosition();
+        double strafeError = distance - pos.getY(DistanceUnit.INCH);
+        boolean isDone = Math.abs(strafeError) < 0.5;
+             
+        while (opModeIsActive() && !isDone) {
+            odo.update();
+            pos = odo.getPosition();
+            double driveError = 0 - pos.getX(DistanceUnit.INCH);
+            double driveCorrection = driveError * DRIVE_DRIVE;
+                 
+            strafeError = distance - pos.getY(DistanceUnit.INCH);
+            double strafeCorrection = strafeError * DRIVE_STRAFE;
+                 
+            double turnError = 0 - pos.getHeading(AngleUnit.DEGREES);
+            double turnCorrection = turnError * DRIVE_TURN;
+                 
+            moveRobot(driveCorrection, -strafeCorrection, -turnCorrection);
+            isDone = Math.abs(strafeError) < 0.5;
+        }
+        moveRobot(0, 0, 0);
+        }
+    }
+    
+    public void turn(double angle, double speed){
+        if (opModeIsActive()) {
+            odo.update();
+            Pose2D pos = odo.getPosition();
+            double currentH = pos.getHeading(AngleUnit.DEGREES);
+            telemetry.addData("H:", currentH-angle);
+            telemetry.update();
+            while(opModeIsActive() && Math.abs(angle - currentH)>3){
+                odo.update();
+                pos = odo.getPosition();
+                currentH = pos.getHeading(AngleUnit.DEGREES);
+                double headingError = angle - currentH;
+                double headingCorrection = headingError * 0.01;
+                telemetry.addData("H:", currentH);
+                telemetry.addData("hc:", headingCorrection);
+                telemetry.update();
+                moveRobot(0, 0, -headingCorrection);
+            }
+            moveRobot(0, 0, 0);
         }
     }
 
@@ -325,6 +404,30 @@ public class SlideAutoSpeci extends LinearOpMode {
         rightBackMotor.setPower(rightSpeed);
         rightFrontMotor.setPower(rightSpeed);
     }
+    
+    public void moveRobot(double drive, double strafe, double yaw) {
+        double lF = drive + strafe + yaw;
+        double rF = drive - strafe - yaw;
+        double lB = drive - strafe + yaw;
+        double rB = drive + strafe - yaw;
+             
+        double max = Math.max(Math.abs(lF), Math.abs(rF));
+        max = Math.max(max, Math.abs(lB));
+        max = Math.max(max, Math.abs(rB));
+             
+        if (max > 1.0)  {
+            lF /= max;
+            rF /= max;
+            lB /= max;
+            rB /= max;
+        }
+             
+        //send power to the motors
+        leftFrontMotor.setPower(lF);
+        rightFrontMotor.setPower(rF);
+        leftBackMotor.setPower(lB);
+        rightBackMotor.setPower(rB);
+    }
 
     private void sendTelemetry(boolean straight) {
 
@@ -349,6 +452,11 @@ public class SlideAutoSpeci extends LinearOpMode {
     }
     
     public void initRobot(){
+        odo = hardwareMap.get(GoBildaPinpointDriver.class, "odometry");
+        odo.setOffsets(-63.5, 177.8);
+        odo.setEncoderResolution(GoBildaPinpointDriver.GoBildaOdometryPods.goBILDA_4_BAR_POD);
+        odo.setEncoderDirections(GoBildaPinpointDriver.EncoderDirection.FORWARD, GoBildaPinpointDriver.EncoderDirection.FORWARD);
+        odo.resetPosAndIMU();
         // Declare our motors
         leftFrontMotor = hardwareMap.dcMotor.get("Left Front Motor");
         leftBackMotor = hardwareMap.dcMotor.get("Left Back Motor");
@@ -387,15 +495,22 @@ public class SlideAutoSpeci extends LinearOpMode {
         telemetry.addData("Intialize",1);
     }
     
-    public void slideToPosition(double slidePosition) {
-        slideMotorLeft.setTargetPosition((int)slidePosition);
-        slideMotorRight.setTargetPosition((int)slidePosition);
+    public void slideToPosition(double targetPosition) {
+        slideMotorLeft.setTargetPosition((int)targetPosition);
+        slideMotorRight.setTargetPosition((int)targetPosition);
         slideMotorLeft.setMode(DcMotor.RunMode.RUN_TO_POSITION);
         slideMotorRight.setMode(DcMotor.RunMode.RUN_TO_POSITION);
         slideMotorRight.setPower(0.8);
         slideMotorLeft.setPower(0.8); // Adjust power as needed
-        
-        while (opModeIsActive() && slideMotorRight.isBusy()); claw.setPosition(CLAW_CLOSE);
+        while (opModeIsActive() && slideMotorRight.isBusy()){
+            double currentPosition = slideMotorRight.getCurrentPosition();
+            double currentError = targetPosition - currentPosition;
+            double correction = currentError * SLIDES_KP; 
+            if(currentError > 0){
+                slideMotorRight.setPower(correction + SLIDES_BASE_POWER);
+                slideMotorLeft.setPower(correction + SLIDES_BASE_POWER);
+            }
+        }
         slideMotorRight.setPower(0.2);
         slideMotorLeft.setPower(0.2);
     }
@@ -411,15 +526,15 @@ public class SlideAutoSpeci extends LinearOpMode {
         slideToPosition(SLIDES_INITIAL);
     }
     
-    public void goSidewaysRight(double maxDriveSpeed){
-         double speed = Math.abs(maxDriveSpeed);
+    public void goSideways(double maxDriveSpeed, int time){
+         double speed = maxDriveSpeed;
      
          leftBackMotor.setPower(speed);
          leftFrontMotor.setPower(-speed);
          rightBackMotor.setPower(-speed);
          rightFrontMotor.setPower(speed);
 
-         sleep(800);
+         sleep(time);
          leftBackMotor.setPower(0);
          leftFrontMotor.setPower(0);
          rightBackMotor.setPower(0);
