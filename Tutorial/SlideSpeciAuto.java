@@ -70,7 +70,7 @@ public class SlideAutoSpeci extends LinearOpMode {
      
     // These constants define the desired driving/control characteristics
     // They can/should be tweaked to suit the specific robot drive train.
-    public final double     DRIVE_SPEED             = 0.6;     // Max driving speed for better distance accuracy.
+    public final double     DRIVE_SPEED             = 0.8;     // Max driving speed for better distance accuracy.
     public final double     TURN_SPEED              = 0.7;     // Max turn speed to limit turn rate.
     public final double     HEADING_THRESHOLD       = 1.0;    // How close must the heading get to the target before moving to next step.
     public final double     SLIDES_KP               = 0.001; 
@@ -103,7 +103,6 @@ public class SlideAutoSpeci extends LinearOpMode {
     @Override
     public void runOpMode() {
         initRobot();
-        
         
         claw.setPosition(CLAW_CLOSE);
         
@@ -150,43 +149,59 @@ public class SlideAutoSpeci extends LinearOpMode {
         imu.resetYaw();
         
         waitForStart();
-        //drive(20, 0.3);
-        //turn(-90, 0.5);
-        //strafe(20, 0.5);
-
+        
         // Go to submersible
         slideToPosition(SLIDES_SCORE_SPECIMEN);
         armToPosition(ARM_SCORE_SPECIMEN, 500);
         
+    
         // Score speci
-        driveStraight(DRIVE_SPEED, 27, 0.0);
+        drive(27, DRIVE_SPEED);
+        
         
         // claw.setPosition(CLAW_CLOSE);
 
         slideToPosition(0);
         slideMotorRight.setPower(0);
         slideMotorLeft.setPower(0);
-        claw.setPosition(CLAW_OPEN);
-        //sleep(200);
+        //claw.setPosition(CLAW_OPEN);
         
         // Go back
-        driveStraight(DRIVE_SPEED, -10, 0.0);
-        goSideways(-0.8, 800);
-        //resetRobot();
-        driveStraight(DRIVE_SPEED, 42, 0);
-        turnToHeading(TURN_SPEED, 178);
-        imu.resetYaw();
         
+        drive(-10, DRIVE_SPEED);
+        armToPosition(ARM_INITIAL, 500);
+        
+        strafe(-27.31, DRIVE_SPEED);
+        drive(40.31, DRIVE_SPEED);
+        turn(176, TURN_SPEED);
+        sleep(500);
+        odo.resetPosAndIMU();
+        odo.update();
+        while (odo.getDeviceStatus() != GoBildaPinpointDriver.DeviceStatus.READY){
+            sleep(100);
+            odo.update();
+        }
+        odo.update();
+            Pose2D pos = odo.getPosition();
+            telemetry.addData("after reset X:", pos.getX(DistanceUnit.INCH));
+            telemetry.addData("after reset Y:", pos.getY(DistanceUnit.INCH));
+            telemetry.addData("after reset H:", pos.getHeading(AngleUnit.DEGREES));
+            telemetry.update();
+        
+        strafe(11, DRIVE_SPEED);
         // Push the 1st sample
-        goSideways(0.3, 750);
-        driveStraight(DRIVE_SPEED, 50, 0);
-        sleep(200);
-        driveStraight(0.4, -52, 0);
-        
-        goSideways(0.3, 750);
-        driveStraight(0.4, 51, 0);
-        
+        drive(50, DRIVE_SPEED);
+
+        drive(-50, DRIVE_SPEED);
+        // Push the 2nd sample
+        strafe(11, DRIVE_SPEED);
+        drive(50, DRIVE_SPEED);
+        drive(-50, DRIVE_SPEED-0.1);
+        //
+        strafe(8.5, DRIVE_SPEED);
+        drive(50, DRIVE_SPEED-0.1);
         resetRobot();
+    
     }
     
     /* FUNCTIONS */
@@ -251,22 +266,34 @@ public class SlideAutoSpeci extends LinearOpMode {
         if (opModeIsActive()) {
         odo.update();
         Pose2D pos = odo.getPosition();
+        
+        distance = pos.getX(DistanceUnit.INCH) + distance;
+        double currentStrafe = pos.getY(DistanceUnit.INCH);
+        double currentHeading = pos.getHeading(AngleUnit.DEGREES);
         double driveError = distance - pos.getX(DistanceUnit.INCH);
         boolean isDone = Math.abs(driveError) < 0.5;
-             
+        speed = Math.abs(speed);
+        
         while (opModeIsActive() && !isDone) {
             odo.update();
             pos = odo.getPosition();
+            telemetry.addData("driveX:", pos.getX(DistanceUnit.INCH));
+            telemetry.addData("driveY:", pos.getY(DistanceUnit.INCH));
+            telemetry.addData("driveH:", pos.getHeading(AngleUnit.DEGREES));
+            telemetry.update();
             driveError = distance - pos.getX(DistanceUnit.INCH);
             double driveCorrection = driveError * DRIVE_DRIVE;
                  
-            double strafeError = -pos.getY(DistanceUnit.INCH);
+            double strafeError = currentStrafe - pos.getY(DistanceUnit.INCH);
             double strafeCorrection = strafeError * DRIVE_STRAFE;
                  
-            double turnError = -pos.getHeading(AngleUnit.DEGREES);
+            double turnError = currentHeading - pos.getHeading(AngleUnit.DEGREES);
             double turnCorrection = turnError * DRIVE_TURN;
-                 
+            
+            driveCorrection = Range.clip(driveCorrection, -speed, speed);
+            strafeCorrection = Range.clip(strafeCorrection, -speed, speed);
             moveRobot(driveCorrection, -strafeCorrection, -turnCorrection);
+           
             isDone = Math.abs(driveError) < 0.5;
         }
         moveRobot(0, 0, 0);
@@ -277,41 +304,57 @@ public class SlideAutoSpeci extends LinearOpMode {
         if (opModeIsActive()) {
         odo.update();
         Pose2D pos = odo.getPosition();
-        double strafeError = distance - pos.getY(DistanceUnit.INCH);
-        boolean isDone = Math.abs(strafeError) < 0.5;
+        double currentDrive = pos.getX(DistanceUnit.INCH);
+        double currentHeading = pos.getHeading(AngleUnit.DEGREES);
+        double targetDistance = distance + pos.getY(DistanceUnit.INCH);
+        boolean isDone = Math.abs(distance) < 0.5;
+        speed = Math.abs(speed);
              
         while (opModeIsActive() && !isDone) {
             odo.update();
             pos = odo.getPosition();
-            double driveError = 0 - pos.getX(DistanceUnit.INCH);
-            double driveCorrection = driveError * DRIVE_DRIVE;
+            double driveError = currentDrive - pos.getX(DistanceUnit.INCH);
+            double driveCorrection = driveError * DRIVE_STRAFE;
                  
-            strafeError = distance - pos.getY(DistanceUnit.INCH);
-            double strafeCorrection = strafeError * DRIVE_STRAFE;
+            double strafeError = targetDistance - pos.getY(DistanceUnit.INCH);
+            double strafeCorrection = strafeError * DRIVE_DRIVE;
                  
-            double turnError = 0 - pos.getHeading(AngleUnit.DEGREES);
+            double turnError = currentHeading - pos.getHeading(AngleUnit.DEGREES);
             double turnCorrection = turnError * DRIVE_TURN;
-                 
+            
+            strafeCorrection = Range.clip(strafeCorrection, -speed, speed);
+            telemetry.addData("targetX:", currentDrive);
+            telemetry.addData("targetY:", targetDistance);            
+            telemetry.addData("strafe X:", pos.getX(DistanceUnit.INCH));
+            telemetry.addData("strafe Y:", pos.getY(DistanceUnit.INCH));
+            telemetry.addData("strafe H:",pos.getHeading(AngleUnit.DEGREES));
+            telemetry.addData("drive:",driveCorrection);
+            telemetry.addData("strafe:",-strafeCorrection);
+            telemetry.addData("turn:",-turnCorrection);
+            telemetry.update();
             moveRobot(driveCorrection, -strafeCorrection, -turnCorrection);
             isDone = Math.abs(strafeError) < 0.5;
         }
         moveRobot(0, 0, 0);
+        sleep(1000);
         }
     }
     
     public void turn(double angle, double speed){
+        speed = Math.abs(speed);
         if (opModeIsActive()) {
             odo.update();
             Pose2D pos = odo.getPosition();
             double currentH = pos.getHeading(AngleUnit.DEGREES);
             telemetry.addData("H:", currentH-angle);
             telemetry.update();
-            while(opModeIsActive() && Math.abs(angle - currentH)>3){
+            while(opModeIsActive() && Math.abs(angle - currentH)>2){
                 odo.update();
                 pos = odo.getPosition();
                 currentH = pos.getHeading(AngleUnit.DEGREES);
                 double headingError = angle - currentH;
-                double headingCorrection = headingError * 0.01;
+                double headingCorrection = headingError * 0.02;
+                headingCorrection = Range.clip(headingCorrection, -speed, speed);
                 telemetry.addData("H:", currentH);
                 telemetry.addData("hc:", headingCorrection);
                 telemetry.update();
