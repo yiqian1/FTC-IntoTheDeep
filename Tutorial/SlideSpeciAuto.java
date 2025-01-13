@@ -70,7 +70,7 @@ public class SlideAutoSpeci extends LinearOpMode {
      
     // These constants define the desired driving/control characteristics
     // They can/should be tweaked to suit the specific robot drive train.
-    public final double     DRIVE_SPEED             = 0.8;     // Max driving speed for better distance accuracy.
+    public final double     DRIVE_SPEED             = 0.7;     // Max driving speed for better distance accuracy.
     public final double     TURN_SPEED              = 0.7;     // Max turn speed to limit turn rate.
     public final double     HEADING_THRESHOLD       = 1.0;    // How close must the heading get to the target before moving to next step.
     public final double     SLIDES_KP               = 0.001; 
@@ -87,7 +87,7 @@ public class SlideAutoSpeci extends LinearOpMode {
     
     static final double DRIVE_DRIVE = 0.03;
     static final double DRIVE_STRAFE = 0.01;
-    static final double DRIVE_TURN = 0.002;
+    static final double DRIVE_TURN = 0.008;
 
     // These variable are declared here (as class members) so they can be updated in various methods,
     // but still be displayed by sendTelemetry()
@@ -156,7 +156,7 @@ public class SlideAutoSpeci extends LinearOpMode {
         
     
         // Score speci
-        drive(27, DRIVE_SPEED);
+        drive(28, DRIVE_SPEED);
         
         
         // claw.setPosition(CLAW_CLOSE);
@@ -164,44 +164,29 @@ public class SlideAutoSpeci extends LinearOpMode {
         slideToPosition(0);
         slideMotorRight.setPower(0);
         slideMotorLeft.setPower(0);
-        //claw.setPosition(CLAW_OPEN);
+        claw.setPosition(CLAW_OPEN);
         
         // Go back
-        
         drive(-10, DRIVE_SPEED);
         armToPosition(ARM_INITIAL, 500);
         
         strafe(-27.31, DRIVE_SPEED);
-        drive(40.31, DRIVE_SPEED);
-        turn(176, TURN_SPEED);
-        sleep(500);
-        odo.resetPosAndIMU();
-        odo.update();
-        while (odo.getDeviceStatus() != GoBildaPinpointDriver.DeviceStatus.READY){
-            sleep(100);
-            odo.update();
-        }
-        odo.update();
-            Pose2D pos = odo.getPosition();
-            telemetry.addData("after reset X:", pos.getX(DistanceUnit.INCH));
-            telemetry.addData("after reset Y:", pos.getY(DistanceUnit.INCH));
-            telemetry.addData("after reset H:", pos.getHeading(AngleUnit.DEGREES));
-            telemetry.update();
-        
+        drive(38, DRIVE_SPEED);
+        turn(177, TURN_SPEED);
+               
         strafe(11, DRIVE_SPEED);
         // Push the 1st sample
         drive(50, DRIVE_SPEED);
-
         drive(-50, DRIVE_SPEED);
         // Push the 2nd sample
         strafe(11, DRIVE_SPEED);
         drive(50, DRIVE_SPEED);
-        drive(-50, DRIVE_SPEED-0.1);
-        //
-        strafe(8.5, DRIVE_SPEED);
-        drive(50, DRIVE_SPEED-0.1);
+        drive(-50, DRIVE_SPEED);
+        // Push the 3rd sample
+        strafe(7, DRIVE_SPEED);
+        drive(51, DRIVE_SPEED-0.2);
         resetRobot();
-    
+
     }
     
     /* FUNCTIONS */
@@ -297,46 +282,49 @@ public class SlideAutoSpeci extends LinearOpMode {
             isDone = Math.abs(driveError) < 0.5;
         }
         moveRobot(0, 0, 0);
+        sleep(200);
         }
     }
     
     public void strafe(double distance, double speed) {
         if (opModeIsActive()) {
-        odo.update();
-        Pose2D pos = odo.getPosition();
-        double currentDrive = pos.getX(DistanceUnit.INCH);
-        double currentHeading = pos.getHeading(AngleUnit.DEGREES);
-        double targetDistance = distance + pos.getY(DistanceUnit.INCH);
-        boolean isDone = Math.abs(distance) < 0.5;
-        speed = Math.abs(speed);
-             
-        while (opModeIsActive() && !isDone) {
             odo.update();
-            pos = odo.getPosition();
-            double driveError = currentDrive - pos.getX(DistanceUnit.INCH);
-            double driveCorrection = driveError * DRIVE_STRAFE;
+            Pose2D pos = odo.getPosition();
+            double currentDrive = pos.getX(DistanceUnit.INCH);
+            double currentHeading = pos.getHeading(AngleUnit.DEGREES);
+            double targetDistance = distance + pos.getY(DistanceUnit.INCH);
+            boolean isDone = Math.abs(distance) < 0.5;
+            speed = Math.abs(speed);
+            ElapsedTime holdTimer = new ElapsedTime();
+            while (opModeIsActive() && !isDone) {
+                odo.update();
+                pos = odo.getPosition();
+                double driveError = currentDrive - pos.getX(DistanceUnit.INCH);
+                double driveCorrection = driveError * DRIVE_STRAFE;
                  
-            double strafeError = targetDistance - pos.getY(DistanceUnit.INCH);
-            double strafeCorrection = strafeError * DRIVE_DRIVE;
+                double strafeError = targetDistance - pos.getY(DistanceUnit.INCH);
+                double strafeCorrection = strafeError * DRIVE_DRIVE;
                  
-            double turnError = currentHeading - pos.getHeading(AngleUnit.DEGREES);
-            double turnCorrection = turnError * DRIVE_TURN;
+                double turnError = currentHeading - pos.getHeading(AngleUnit.DEGREES);
+                double turnCorrection = turnError * DRIVE_TURN;
             
-            strafeCorrection = Range.clip(strafeCorrection, -speed, speed);
-            telemetry.addData("targetX:", currentDrive);
-            telemetry.addData("targetY:", targetDistance);            
-            telemetry.addData("strafe X:", pos.getX(DistanceUnit.INCH));
-            telemetry.addData("strafe Y:", pos.getY(DistanceUnit.INCH));
-            telemetry.addData("strafe H:",pos.getHeading(AngleUnit.DEGREES));
-            telemetry.addData("drive:",driveCorrection);
-            telemetry.addData("strafe:",-strafeCorrection);
-            telemetry.addData("turn:",-turnCorrection);
-            telemetry.update();
-            moveRobot(driveCorrection, -strafeCorrection, -turnCorrection);
-            isDone = Math.abs(strafeError) < 0.5;
-        }
-        moveRobot(0, 0, 0);
-        sleep(1000);
+                strafeCorrection = Range.clip(strafeCorrection, -speed, speed);
+                telemetry.addData("targetX:", currentDrive);
+                telemetry.addData("targetY:", targetDistance);            
+                telemetry.addData("strafe X:", pos.getX(DistanceUnit.INCH));
+                telemetry.addData("strafe Y:", pos.getY(DistanceUnit.INCH));
+                telemetry.addData("strafe H:",pos.getHeading(AngleUnit.DEGREES));
+                telemetry.addData("drive:",driveCorrection);
+                telemetry.addData("strafe:",-strafeCorrection);
+                telemetry.addData("turn:",-turnCorrection);
+                telemetry.update();
+                moveRobot(driveCorrection, -strafeCorrection, -turnCorrection);
+                isDone = Math.abs(strafeError) < 0.5;
+                if (holdTimer.time()>2 && Math.abs(strafeError)<=1)
+                  isDone = true;
+            }
+            moveRobot(0, 0, 0);
+            sleep(200);
         }
     }
     
@@ -361,6 +349,13 @@ public class SlideAutoSpeci extends LinearOpMode {
                 moveRobot(0, 0, -headingCorrection);
             }
             moveRobot(0, 0, 0);
+            sleep(500); //sleep to make sure that the reset works
+            odo.resetPosAndIMU();
+            odo.update();
+            while (odo.getDeviceStatus() != GoBildaPinpointDriver.DeviceStatus.READY){
+            sleep(100);
+            odo.update();
+        }
         }
     }
 
