@@ -51,12 +51,12 @@ public class AA2_SlideSpeciAuto extends LinearOpMode {
      public static double speed = 1.5; // Speed
      
      // Claw positions
-     final double CLAW_CLOSE = 1;
-     final double CLAW_OPEN = 0.5;
+     final double CLAW_CLOSE = 0.5;
+     final double CLAW_OPEN = 0.8;
      
      // Arm positions
      final double ARM_INITIAL = 0.0; 
-     final double ARM_COLLECT = 0.55;
+     final double ARM_COLLECT = 0.52;
      final double ARM_ASCENT = 0.17;
      final double ARM_SCORE_SPECIMEN = 0.2;
      final double ARM_SCORE_BASKETS = 0.3;
@@ -150,80 +150,121 @@ public class AA2_SlideSpeciAuto extends LinearOpMode {
         
         imu.resetYaw();
         
-        claw.setPosition(CLAW_CLOSE);
-        
         waitForStart();
+        Pose2D target1 = new Pose2D(DistanceUnit.INCH, 24, 0, AngleUnit.DEGREES, 0);
+        Pose2D target2 = new Pose2D(DistanceUnit.INCH, 5, 0, AngleUnit.DEGREES, -90);
+        Pose2D target3 = new Pose2D(DistanceUnit.INCH, 4, -14.5, AngleUnit.DEGREES, -90);
+        Pose2D target4 = new Pose2D(DistanceUnit.INCH, 28, 5, AngleUnit.DEGREES, 0);
+        Pose2D target5 = new Pose2D(DistanceUnit.INCH, 20, -26, AngleUnit.DEGREES, 0);
+        Pose2D target6 = new Pose2D(DistanceUnit.INCH, 48, -26, AngleUnit.DEGREES, 0);
+        Pose2D target7 = new Pose2D(DistanceUnit.INCH, 48, -36, AngleUnit.DEGREES, 0);
+        Pose2D target8 = new Pose2D(DistanceUnit.INCH, 6, -36, AngleUnit.DEGREES, 0);
+        Pose2D target9 = new Pose2D(DistanceUnit.INCH, 48, -46, AngleUnit.DEGREES, 0);
+        Pose2D target10 = new Pose2D(DistanceUnit.INCH, 6, -46, AngleUnit.DEGREES, 0);
         
         claw.setPosition(CLAW_CLOSE);
-        sleep(100);
         // Go to submersible
+        driveTo(target1, 0.6);
+        
         slideToPosition(SLIDES_SCORE_SPECIMEN);
         armToPosition(ARM_SCORE_SPECIMEN, 500);
-        
-        // Score the first speci
-        drive(28, DRIVE_SPEED);
-        
-        slideToPosition(2.5*SLIDE_COUNTS_PER_INCH);
+        slideToPosition(1.5*SLIDE_COUNTS_PER_INCH);
         slideMotorRight.setPower(0);
         slideMotorLeft.setPower(0);
         claw.setPosition(CLAW_OPEN);
+        armToPosition(ARM_INITIAL, 800);
         
-        // Go back
-        drive(-25, DRIVE_SPEED);
-        // Slides to initial position
-        slideToPosition(0*SLIDE_COUNTS_PER_INCH);
-        slideMotorRight.setPower(0);
-        slideMotorLeft.setPower(0);
-        turn(-90, TURN_SPEED);
-        drive(18, DRIVE_SPEED);
+        driveTo(target2, 0.8);
+        sleep(100);
         // pick up 2nd specimen
-        armToPosition(ARM_COLLECT, 500);
-        claw.setPosition(CLAW_CLOSE);
-        sleep(200);
-        armToPosition(ARM_INITIAL, 500);
-        drive(-23, DRIVE_SPEED);
-        //Turn to submersible
-        turn(90, TURN_SPEED);
-
-        slideToPosition(SLIDES_SCORE_SPECIMEN);
-        armToPosition(ARM_SCORE_SPECIMEN, 500);
-        drive(24.5, TURN_SPEED);
-        //Hang 2nd specimen
+        armToPosition(ARM_COLLECT, 800);
         slideToPosition(0*SLIDE_COUNTS_PER_INCH);
         slideMotorRight.setPower(0);
         slideMotorLeft.setPower(0);
+        
+        driveTo(target3, 0.6);
+        claw.setPosition(CLAW_CLOSE);
+        sleep(700);
+        //armToPosition(ARM_INITIAL, 300);
+        armToPosition(ARM_INITIAL, 600);
+        
+        driveTo(target4, 0.8);
+        
+        slideToPosition(SLIDES_SCORE_SPECIMEN);
+        armToPosition(ARM_SCORE_SPECIMEN, 600);
+        //Hang 2nd specimen
+        slideToPosition(2*SLIDE_COUNTS_PER_INCH);
+        slideMotorRight.setPower(0);
+        slideMotorLeft.setPower(0);
         claw.setPosition(CLAW_OPEN);
-        drive(-10, DRIVE_SPEED); 
-        // Move to samples
-        strafe(-31, DRIVE_SPEED);
-        drive(38, DRIVE_SPEED);
-        turn(177, TURN_SPEED);
-        
-        odo.update();
-            Pose2D pos = odo.getPosition();
-            telemetry.addData("after reset X:", pos.getX(DistanceUnit.INCH));
-            telemetry.addData("after reset Y:", pos.getY(DistanceUnit.INCH));
-            telemetry.addData("after reset H:", pos.getHeading(AngleUnit.DEGREES));
-            telemetry.update();
-        
-        strafe(11, DRIVE_SPEED);
-        // Push the 1st sample
-        drive(50, DRIVE_SPEED);
-
-        /*
+        // Push two samples
+        driveTo(target5, 0.6);
         sleep(200);
-        drive(-50, DRIVE_SPEED);
-        // Push the 2nd sample
-        strafe(11, DRIVE_SPEED);
-        drive(50, DRIVE_SPEED);
+        driveTo(target6, 0.8);
         sleep(200);
-        drive(-50, DRIVE_SPEED);
-        // Push the 3rd sample
-        strafe(7, DRIVE_SPEED);
-        //sleep(200);
-        drive(51, DRIVE_SPEED-0.2);*/
+        driveTo(target7, 0.8);
+        sleep(200);
+        driveTo(target8, 0.7);
+        sleep(200);
+        driveTo(target7, 0.7);
+        sleep(200);
+        driveTo(target9, 0.6);
+        sleep(200);
+        driveTo(target10, 0.7);
+        
         resetRobot();
 
+    }
+        
+    public void driveTo(Pose2D targetPos, double speed) {
+        if (opModeIsActive()) {
+        odo.update();
+        Pose2D pos = odo.getPosition();
+        
+        double targetX = targetPos.getX(DistanceUnit.INCH);
+        double targetY = targetPos.getY(DistanceUnit.INCH);
+        double targetHeading = targetPos.getHeading(AngleUnit.DEGREES);
+        boolean isDone = false;
+        speed = Math.abs(speed);
+        
+        while (opModeIsActive() && !isDone) {
+            odo.update();
+            pos = odo.getPosition();
+            telemetry.addData("driveX:", pos.getX(DistanceUnit.INCH));
+            telemetry.addData("driveY:", pos.getY(DistanceUnit.INCH));
+            telemetry.addData("driveH:", pos.getHeading(AngleUnit.DEGREES));
+            telemetry.update();
+            
+            double currentHeading = pos.getHeading(AngleUnit.DEGREES);
+            double currentX = pos.getX(DistanceUnit.INCH);
+            double currentY = pos.getY(DistanceUnit.INCH);
+            
+            double driveError = targetX - currentX;
+            double driveCorrection = driveError * 0.06;
+                 
+            double strafeError = targetY - currentY;
+            double strafeCorrection = strafeError * 0.07;
+                 
+            double turnError = targetHeading - currentHeading;
+            double turnCorrection = turnError * 0.015;
+            driveCorrection = Range.clip(driveCorrection, -speed, speed);
+            strafeCorrection = Range.clip(strafeCorrection, -speed, speed);
+            turnCorrection = Range.clip(turnCorrection, -speed, speed);
+            
+            double sineH = Math.sin(Math.toRadians(currentHeading));
+            double cosineH = Math.cos(Math.toRadians(currentHeading));
+              
+
+            double xOutput = driveCorrection * cosineH + strafeCorrection * sineH;
+            double yOutput = driveCorrection * sineH - strafeCorrection * cosineH;
+            
+            moveRobot(xOutput, yOutput, -turnCorrection);
+           
+            isDone = Math.abs(driveError) < 0.5 && Math.abs(strafeError) < 0.5 && Math.abs(turnError) < 2;
+        }
+        moveRobot(0, 0, 0);
+        sleep(200);
+        }
     }
     
     /* FUNCTIONS */
@@ -295,7 +336,7 @@ public class AA2_SlideSpeciAuto extends LinearOpMode {
         double driveError = distance - pos.getX(DistanceUnit.INCH);
         boolean isDone = Math.abs(driveError) < 0.5;
         speed = Math.abs(speed);
-        
+        ElapsedTime holdTimer = new ElapsedTime();
         while (opModeIsActive() && !isDone) {
             odo.update();
             pos = odo.getPosition();
@@ -316,7 +357,9 @@ public class AA2_SlideSpeciAuto extends LinearOpMode {
             strafeCorrection = Range.clip(strafeCorrection, -speed, speed);
             moveRobot(driveCorrection, -strafeCorrection, -turnCorrection);
            
-            isDone = Math.abs(driveError) < 0.5;
+            isDone = Math.abs(driveError) < 0.57;
+            if (holdTimer.time()>2 && Math.abs(strafeError)<=1)
+                  isDone = true;
         }
         moveRobot(0, 0, 0);
         //sleep(180);
@@ -356,7 +399,7 @@ public class AA2_SlideSpeciAuto extends LinearOpMode {
                 telemetry.addData("turn:",-turnCorrection);
                 telemetry.update();
                 moveRobot(driveCorrection, -strafeCorrection, -turnCorrection);
-                isDone = Math.abs(strafeError) < 0.5;
+                isDone = Math.abs(strafeError) < 0.55;
                 if (holdTimer.time()>2 && Math.abs(strafeError)<=1)
                   isDone = true;
             }
@@ -378,7 +421,7 @@ public class AA2_SlideSpeciAuto extends LinearOpMode {
                 pos = odo.getPosition();
                 currentH = pos.getHeading(AngleUnit.DEGREES);
                 double headingError = angle - currentH;
-                double headingCorrection = headingError * 0.02;
+                double headingCorrection = headingError * 0.018;
                 headingCorrection = Range.clip(headingCorrection, -speed, speed);
                 telemetry.addData("H:", currentH);
                 telemetry.addData("hc:", headingCorrection);
@@ -480,7 +523,7 @@ public class AA2_SlideSpeciAuto extends LinearOpMode {
         rightFrontMotor.setPower(rightSpeed);
     }
     
-    public void moveRobot(double drive, double strafe, double yaw) {
+        public void moveRobot(double drive, double strafe, double yaw) {
         double lF = drive + strafe + yaw;
         double rF = drive - strafe - yaw;
         double lB = drive - strafe + yaw;
@@ -503,6 +546,8 @@ public class AA2_SlideSpeciAuto extends LinearOpMode {
         leftBackMotor.setPower(lB);
         rightBackMotor.setPower(rB);
     }
+
+    
 
     private void sendTelemetry(boolean straight) {
 
@@ -569,6 +614,7 @@ public class AA2_SlideSpeciAuto extends LinearOpMode {
          
         telemetry.addData("Intialize",1);
     }
+
     
     public void slideToPosition(double targetPosition) {
         slideMotorLeft.setTargetPosition((int)targetPosition);
